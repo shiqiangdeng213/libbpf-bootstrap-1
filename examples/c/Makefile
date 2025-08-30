@@ -25,7 +25,7 @@ CFLAGS := -g -Wall
 ALL_LDFLAGS := $(LDFLAGS) $(EXTRA_LDFLAGS)
 
 APPS = minimal minimal_legacy minimal_ns bootstrap uprobe kprobe fentry \
-       usdt sockfilter tc ksyscall task_iter lsm
+       usdt sockfilter tc ksyscall task_iter lsm comm_test
 
 CARGO ?= $(shell which cargo)
 ifeq ($(strip $(CARGO)),)
@@ -34,7 +34,8 @@ else
 BZS_APPS := profile
 APPS += $(BZS_APPS)
 # Required by libblazesym
-ALL_LDFLAGS += -lrt -ldl -lpthread -lm
+# ALL_LDFLAGS += -lrt -ldl -lpthread -lm
+ALL_LDFLAGS += -lrt -ldl -lpthread -lm -static -lelf -lz -lzstd -llzma -lbz2
 endif
 
 # Get Clang's default includes on this system. We'll explicitly add these dirs
@@ -129,7 +130,8 @@ $(BZS_APPS): $(LIBBLAZESYM_OBJ)
 # Build application binary
 $(APPS): %: $(OUTPUT)/%.o $(LIBBPF_OBJ) | $(OUTPUT)
 	$(call msg,BINARY,$@)
-	$(Q)$(CC) $(CFLAGS) $^ $(ALL_LDFLAGS) -lelf -lz -o $@
+	#$(Q)$(CC) $(CFLAGS) $^ $(ALL_LDFLAGS) -lelf -lz -o $@
+	$(Q)$(CC) $(CFLAGS) $^ $(ALL_LDFLAGS) -lelf -lz -static -lzstd -llzma -lbz2 -o $@
 
 # delete failed targets
 .DELETE_ON_ERROR:

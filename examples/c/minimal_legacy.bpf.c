@@ -18,13 +18,12 @@ struct {
 	__type(value, pid_t);
 } my_pid_map SEC(".maps");
 
-SEC("tp/syscalls/sys_enter_write")
+SEC("tp/syscalls/sys_enter_write")		//跟踪这个函数的调用并输出结果
 int handle_tp(void *ctx)
 {
 	u32 index = 0;
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
-	pid_t *my_pid = bpf_map_lookup_elem(&my_pid_map, &index);
-
+	pid_t *my_pid = bpf_map_lookup_elem(&my_pid_map, &index);	//查找map当中，index为0的数据，返回给my_pid
 	if (!my_pid || *my_pid != pid)
 		return 1;
 
