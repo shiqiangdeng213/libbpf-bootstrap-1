@@ -6,6 +6,22 @@
 #include <bpf/libbpf.h>
 #include "comm_test.skel.h"
 
+
+
+
+static void get_data(int fd)
+{
+	int key = 100;
+	int c;
+	struct comm my_test = {0};
+
+	for (c = 0; c < 1024; c++) {
+		bpf_map_lookup_elem(fd, &key, &my_test);
+		printf("pid=%d, comm=%s\n", my_test.pid, my_test.comm);
+	}
+}
+
+
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
 {
 	return vfprintf(stderr, format, args);
@@ -15,12 +31,13 @@ int main(int argc, char **argv)
 {
 	struct comm_test_bpf *skel;
 	int err;
-
+	int map_fd;
 	/* Set up libbpf errors and debug info callback */
 	libbpf_set_print(libbpf_print_fn);
 
 	/* Open BPF application */
-	skel = comm_test_bpf__open();
+	skel = bpf_object__open_file("comm_test.bpf.o", NULL);
+	//skel = comm_test_bpf__open();
 	if (!skel) {
 		fprintf(stderr, "Failed to open BPF skeleton\n");
 		return 1;
@@ -42,13 +59,20 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to attach BPF skeleton\n");
 		goto cleanup;
 	}
+	
+	map_fd = bpf_object__find_map_fd_by_name(skel, "my_pid_map");
+	if (map_fd < 0) {
+		printf("ERROR: finding a map in obj file failed\n");
+		return 1;
+	}
 
 	printf("Successfully started! Please run `sudo cat /sys/kernel/debug/tracing/trace_pipe` "
 	       "to see output of the BPF programs.\n");
 
 	for (;;) {
 		/* trigger our BPF program */
-		fprintf(stderr, ".");
+		//fprintf(stderr, ".");
+		get_data(map_fd);
 		sleep(1);
 	}
 
