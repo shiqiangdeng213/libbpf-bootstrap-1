@@ -3,10 +3,10 @@
 #ifndef __BOOTSTRAP_H
 #define __BOOTSTRAP_H
 
-#define TASK_COMM_LEN	 16				/* 进程名字长度通常是16字节 */
-#define MAX_FILENAME_LEN 127			/* 文件名加路径长度通常是127字节 */
+#define TASK_COMM_LEN	 16
+#define MAX_FILENAME_LEN 127
 
-struct event {							/* 定义一个事件记录进程退出 */
+struct event {
 	int pid;
 	int ppid;
 	unsigned exit_code;
