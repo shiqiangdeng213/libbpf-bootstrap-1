@@ -25,7 +25,8 @@ CFLAGS := -g -Wall
 ALL_LDFLAGS := $(LDFLAGS) $(EXTRA_LDFLAGS)
 
 APPS = minimal minimal_legacy minimal_ns bootstrap uprobe kprobe fentry \
-       usdt sockfilter tc ksyscall task_iter lsm process_switch migrate_monitor
+       usdt sockfilter tc ksyscall task_iter lsm process_switch migrate_monitor	\
+       sched_stat
 
 #CARGO ?= $(shell which cargo)	#设备不能联网的话执行到这里会一直等待联网，所以最好注释掉
 ifeq ($(strip $(CARGO)),)
