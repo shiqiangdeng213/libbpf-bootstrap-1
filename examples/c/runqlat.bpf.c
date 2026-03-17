@@ -24,6 +24,18 @@ int handle_wakeup(struct trace_event_raw_sched_wakeup_template *ctx)
 	u64 ts = bpf_ktime_get_ns();
 	
 	bpf_map_update_elem(&wake_up, &pid, &ts, BPF_ANY);
+	
+	return 0;
+}
+
+SEC("tp/sched/sched_wakeup_new")
+int handle_wakeup_new(struct trace_event_raw_sched_wakeup_template *ctx)
+{
+	pid_t pid = ctx->pid;
+	u64 ts = bpf_ktime_get_ns();
+	
+	bpf_map_update_elem(&wake_up, &pid, &ts, BPF_ANY);
+	
 	return 0;
 }
 
