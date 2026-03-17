@@ -1,0 +1,68 @@
+// SPDX-License-Identifier: GPL-2.0
+#include "vmlinux.h"
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
+#include <bpf/bpf_core_read.h>
+#include "runqlat.h"
+
+// 存放线程唤醒时候的时间戳
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 8192);
+	__type(key, pid_t);
+	__type(value, struct event);
+} wake_up SEC(".maps");
+
+// 输出到用户态
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+	__uint(max_entries, 256 * 1024);
+} rb SEC(".maps");
+
+SEC("tp/sched/sched_wakeup")		// 跟踪唤醒，只负责记录的map中
+int handle_wakeup(struct trace_event_raw_sched_wakeup_template *ctx)
+{
+	struct event e = {};
+	pid_t pid;
+	
+	pid = ctx->pid;
+	e.pid = pid;
+	e.prio = ctx->prio;
+	e.target_cpu = ctx->target_cpu;
+	e.wakeup_time_ns = bpf_ktime_get_ns();
+	e.lat_time_ns = 0;
+	
+	bpf_core_read_str(e.comm, sizeof(e.comm), &ctx->comm);	
+	bpf_map_update_elem(&wake_up, &pid, &e, BPF_ANY);
+		
+	return 0;
+}
+
+SEC("tp/sched/sched_switch")		// 跟踪切换，发送到用户空间之后删除
+int handle_switch(struct trace_event_raw_sched_switch *ctx)
+{
+	struct event e = {};
+	struct event *lookup;
+	pid_t pid;
+	
+	pid = ctx->next_pid;			// 即将上CPU运行的线程
+	
+	lookup = bpf_map_lookup_elem(&wake_up, &pid);
+	if (lookup == NULL)
+		return 0;
+		
+	e.pid = pid;
+	e.prio = ctx->next_prio;
+	
+	bpf_core_read_str(e.comm, sizeof(e.comm), &ctx->next_comm);
+	e.lat_time_ns = bpf_ktime_get_ns() - lookup->wakeup_time_ns;
+	
+	bpf_ringbuf_output(&rb, &e, sizeof(e), 0);
+	bpf_map_delete_elem(&wake_up, &pid);
+
+	return 0;
+}
+
+char LICENSE[] SEC("license") = "GPL";
+
+
