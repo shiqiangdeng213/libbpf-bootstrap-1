@@ -7,7 +7,10 @@
 
 static volatile bool exiting = 0;
 
-static void sig(int s) { exiting = 1; }
+static void sig(int s) 
+{ 
+	exiting = 1; 
+}
 
 void print_auto_hist(int fd)
 {
