@@ -3,6 +3,9 @@
 [![Github Actions](https://github.com/libbpf/libbpf-bootstrap/actions/workflows/build.yml/badge.svg)](https://github.com/libbpf/libbpf-bootstrap/actions/workflows/build.yml)
 [![Github Actions](https://github.com/libbpf/libbpf-bootstrap/actions/workflows/build-android.yml/badge.svg)](https://github.com/libbpf/libbpf-bootstrap/actions/workflows/build-android.yml)
 
+Make sure you have cloned this repo using `--recurse-submodules` and installed the dependencies 
+before you try to build the examples.  See [Building](#Building) for details.
+
 ## minimal
 
 `minimal` is just that – a minimal practical BPF application example. It
@@ -105,6 +108,22 @@ TIME     EVENT COMM             PID     PPID    FILENAME/EXIT CODE
 19:18:43 EXIT  timeout          3817609 402466  [0] (321ms)
 19:18:44 EXIT  iostat           3817585 3817531 [0] (3006ms)
 19:18:44 EXIT  tee              3817587 3817531 [0] (3005ms)
+...
+```
+
+## bootstrap_legacy
+
+`bootstrap_legacy` is a version of `bootstrap` modified to run on older kernels that do not support BPF ring buffer maps (BPF_MAP_TYPE_RINGBUF) introduced in kernel 5.8. `bootstrap_legacy` replaces the ring buffer maps with perf event array (BPF_MAP_TYPE_PERF_EVENT_ARRAY) for compatibility with older kernel versions.
+
+```shell
+$ cd examples/c
+$ make bootstrap_legacy
+$ sudo ./bootstrap_legacy
+TIME     EVENT COMM             PID     PPID    FILENAME/EXIT CODE
+10:26:32 EXEC  sh               4101543 4054526 /bin/sh
+10:26:32 EXEC  python           4101545 4101543 /usr/bin/python
+10:26:32 EXIT  python           4101545 4101543 [0] (9ms)
+10:26:32 EXIT  sh               4101543 4054526 [0] (10ms)
 ...
 ```
 
@@ -312,7 +331,8 @@ interface:lo    protocol: UDP   127.0.0.1:41552(src) -> 127.0.0.1:53(dst)
 
 `task_iter` is an example of using [BPF Iterators](https://docs.kernel.org/bpf/bpf_iterators.html). 
 This example iterates over all tasks on the host and gets their pid, process name, 
-kernel stack, and their state. Note: you can use BlazeSym to symbolize the kernel stacktraces 
+kernel stack, and their state. The user can provide a pid as first argument to the executable. This will filter out all
+tasks not belonging to a particular process. Note: you can use BlazeSym to symbolize the kernel stacktraces
 (like in `profile`) but that code is omitted for simplicity.
 
 ```shell

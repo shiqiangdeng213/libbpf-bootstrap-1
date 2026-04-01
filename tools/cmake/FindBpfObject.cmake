@@ -105,15 +105,12 @@ elseif(BPFOBJECT_BPFTOOL_EXE)
   # Generate vmlinux.h
   set(GENERATED_VMLINUX_DIR ${CMAKE_CURRENT_BINARY_DIR})
   set(BPFOBJECT_VMLINUX_H ${GENERATED_VMLINUX_DIR}/vmlinux.h)
-  execute_process(COMMAND ${BPFOBJECT_BPFTOOL_EXE} btf dump file /sys/kernel/btf/vmlinux format c
-    OUTPUT_FILE ${BPFOBJECT_VMLINUX_H}
-    ERROR_VARIABLE VMLINUX_error
-    RESULT_VARIABLE VMLINUX_result)
-  if(${VMLINUX_result} EQUAL 0)
-    set(VMLINUX ${BPFOBJECT_VMLINUX_H})
-  else()
-    message(FATAL_ERROR "Failed to dump vmlinux.h from BTF: ${VMLINUX_error}")
-  endif()
+  add_custom_command(OUTPUT ${BPFOBJECT_VMLINUX_H}
+    COMMAND ${BPFOBJECT_BPFTOOL_EXE} btf dump file /sys/kernel/btf/vmlinux format c > ${BPFOBJECT_VMLINUX_H}
+    DEPENDS ${BPFOBJECT_BPFTOOL_EXE}
+    VERBATIM
+    COMMENT "[vmlinux] Generating header: ${BPFOBJECT_VMLINUX_H}"
+  )
 endif()
 
 include(FindPackageHandleStandardArgs)
@@ -123,6 +120,7 @@ find_package_handle_standard_args(BpfObject
     BPFOBJECT_CLANG_EXE
     LIBBPF_INCLUDE_DIRS
     LIBBPF_LIBRARIES
+    BPFOBJECT_VMLINUX_H
     GENERATED_VMLINUX_DIR)
 
 # Get clang bpf system includes
@@ -141,18 +139,20 @@ else()
 endif()
 
 # Get target arch
-execute_process(COMMAND uname -m
-  COMMAND sed -e "s/x86_64/x86/" -e "s/aarch64/arm64/" -e "s/ppc64le/powerpc/" -e "s/mips.*/mips/" -e "s/riscv64/riscv/"
-  OUTPUT_VARIABLE ARCH_output
-  ERROR_VARIABLE ARCH_error
-  RESULT_VARIABLE ARCH_result
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(${ARCH_result} EQUAL 0)
-  set(ARCH ${ARCH_output})
-  message(STATUS "BPF target arch: ${ARCH}")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+  set(ARCH x86)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+  set(ARCH arm64)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  set(ARCH powerpc)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "mips")
+  set(ARCH mips)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
+  set(ARCH riscv)
 else()
-  message(FATAL_ERROR "Failed to determine target architecture: ${ARCH_error}")
+  set(ARCH ${CMAKE_SYSTEM_PROCESSOR})
 endif()
+message(STATUS "BPF target arch: ${ARCH}")
 
 # Public macro
 macro(bpf_object name input)
@@ -171,7 +171,7 @@ macro(bpf_object name input)
             -isystem ${LIBBPF_INCLUDE_DIRS} -c ${BPF_C_FILE} -o ${BPF_O_FILE}
     COMMAND_EXPAND_LISTS
     VERBATIM
-    DEPENDS ${BPF_C_FILE} ${BPF_H_FILES}
+    DEPENDS ${BPF_C_FILE} ${BPF_H_FILES} ${BPFOBJECT_VMLINUX_H}
     COMMENT "[clang] Building BPF object: ${name}")
 
   # Build BPF skeleton header
